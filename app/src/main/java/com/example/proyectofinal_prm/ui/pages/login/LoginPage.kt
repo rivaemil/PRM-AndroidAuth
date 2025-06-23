@@ -36,6 +36,12 @@ import com.example.proyectofinal_prm.ui.components.PrimaryButton
 import com.example.proyectofinal_prm.ui.components.SecondaryButton
 import com.example.proyectofinal_prm.ui.components.linkText
 import java.util.concurrent.Executors
+import android.widget.Toast
+import com.example.proyectofinal_prm.data.*
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+
 
 @Composable
 fun LoginPage(
@@ -46,6 +52,9 @@ fun LoginPage(
     val activity = LocalActivity.current as FragmentActivity // Necesario para BiometricPrompt
     var showBiometricError by remember { mutableStateOf(false) }
     var biometricErrorText by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+
 
     fun verifyBiometricAuth(
         activityContext: Context,
@@ -111,12 +120,16 @@ fun LoginPage(
 
         InputField(
             placeholder = "Ingresa tu email",
+            value = email,
+            onValueChange = { email = it },
         )
 
         Spacer(modifier = Modifier.height(24.dp))
 
         InputField(
             placeholder = "Ingresa tu contraseña",
+            value = password,
+            onValueChange = { password = it },
         )
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -144,7 +157,22 @@ fun LoginPage(
 
         PrimaryButton(
             onClick = {
-                navController.navigate("home")
+                val user = LoginRequest(email, password)
+
+                ApiClient.apiService.login(user).enqueue(object : Callback<AuthResponse> {
+                    override fun onResponse(call: Call<AuthResponse>, response: Response<AuthResponse>) {
+                        if (response.isSuccessful) {
+                            Toast.makeText(context, "Login exitoso", Toast.LENGTH_SHORT).show()
+                            navController.navigate("home")
+                        } else {
+                            Toast.makeText(context, "Credenciales inválidas", Toast.LENGTH_LONG).show()
+                        }
+                    }
+
+                    override fun onFailure(call: Call<AuthResponse>, t: Throwable) {
+                        Toast.makeText(context, "Fallo de red: ${t.message}", Toast.LENGTH_LONG).show()
+                    }
+                })
             },
             text = "Login",
             modifier = Modifier

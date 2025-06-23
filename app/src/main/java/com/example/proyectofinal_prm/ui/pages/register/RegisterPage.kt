@@ -29,12 +29,24 @@ import com.example.proyectofinal_prm.ui.components.InputField
 import com.example.proyectofinal_prm.ui.components.Message
 import com.example.proyectofinal_prm.ui.components.PrimaryButton
 import com.example.proyectofinal_prm.ui.components.linkText
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import com.example.proyectofinal_prm.data.*
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+
 
 @Composable
 fun RegisterPage(
     navController: NavController,
 ){
+    val context = LocalContext.current
     var isChecked by remember { mutableStateOf(false) }
+    var name by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+
     Column (
         modifier = Modifier
             .fillMaxSize()
@@ -56,6 +68,8 @@ fun RegisterPage(
             )
             InputField(
                 placeholder = "Ingresa tu nombre",
+                value = name,
+                onValueChange = { name = it },
             )
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -63,9 +77,12 @@ fun RegisterPage(
             Text(
                 text = "Email",
                 modifier = Modifier.padding(horizontal = 24.dp),
+
             )
             InputField(
                 placeholder = "Ingresa tu email",
+                value = email,
+                onValueChange = { email = it },
             )
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -76,13 +93,32 @@ fun RegisterPage(
             )
             InputField(
                 placeholder = "Ingresa tu contraseña",
+                value = password,
+                onValueChange = { password = it }
             )
         }
 
         Spacer(modifier = Modifier.height(20.dp))
 
         PrimaryButton(
-            onClick = { navController.navigate("home") },
+            onClick = {
+                val user = RegisterRequest(name, email, password)
+
+                ApiClient.apiService.register(user).enqueue(object : Callback<AuthResponse> {
+                    override fun onResponse(call: Call<AuthResponse>, response: Response<AuthResponse>) {
+                        if (response.isSuccessful) {
+                            Toast.makeText(context, "Registro exitoso", Toast.LENGTH_SHORT).show()
+                            navController.navigate("home")
+                        } else {
+                            Toast.makeText(context, "Error: ${response.message()}", Toast.LENGTH_LONG).show()
+                        }
+                    }
+
+                    override fun onFailure(call: Call<AuthResponse>, t: Throwable) {
+                        Toast.makeText(context, "Fallo de red: ${t.message}", Toast.LENGTH_LONG).show()
+                    }
+                })
+            },
             text = "Registrarse",
             modifier = Modifier
                 .height(45.dp)

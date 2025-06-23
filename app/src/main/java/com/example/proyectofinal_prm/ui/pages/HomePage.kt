@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.example.proyectofinal_prm.ui.components.Listing
 
 @Composable
 fun HomePage(modifier : Modifier = Modifier ) {
@@ -21,16 +22,6 @@ fun HomePage(modifier : Modifier = Modifier ) {
         horizontalAlignment = Alignment.CenterHorizontally
 
     ) {
-        Text(text = "Apps Moviles",
-            fontSize = 40.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.White
-        )
-        Text(text = "Home Page",
-            fontSize = 25.sp,
-            fontWeight = FontWeight.Normal,
-            color = Color.White
-        )
-
+        Listing()
     }
 }
