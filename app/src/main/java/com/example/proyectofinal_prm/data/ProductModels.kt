@@ -6,3 +6,9 @@ data class ImageItem(
     val imageable_type: String,
     val imageable_id: Int
 )
+
+data class RelatedData(
+    val name: String,
+    val description: String,
+    val price: Int
+)
