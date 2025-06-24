@@ -7,7 +7,8 @@ data class ImageItem(
     val imageable_id: Int
 )
 
-data class RelatedData(
+data class DisplayItem(
+    val image: ImageItem,
     val name: String,
     val description: String,
     val price: Int

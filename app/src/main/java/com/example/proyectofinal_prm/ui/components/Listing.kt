@@ -1,6 +1,7 @@
 package com.example.proyectofinal_prm.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -9,30 +10,36 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.unit.dp
-import kotlin.math.max
-import androidx.compose.foundation.Image
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import com.example.proyectofinal_prm.data.ApiClient
+import com.example.proyectofinal_prm.data.DisplayItem
 import com.example.proyectofinal_prm.data.ImageItem
-import com.example.proyectofinal_prm.data.RelatedData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.math.max
 
 @Composable
 fun Listing() {
-    var items by remember { mutableStateOf<List<ImageItem>>(emptyList()) }
+    var items by remember { mutableStateOf<List<DisplayItem>>(emptyList()) }
 
     LaunchedEffect(Unit) {
         try {
             val response = withContext(Dispatchers.IO) {
                 ApiClient.apiService.getImages()
             }
-            items = response
+
+            items = response.mapIndexed { index, image ->
+                DisplayItem(
+                    image = image,
+                    name = productName(index),
+                    description = Description(),
+                    price = Price()
+                )
+            }
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -44,12 +51,9 @@ fun Listing() {
         state = listState,
         modifier = Modifier.padding(vertical = 4.dp)
     ) {
-        itemsIndexed(items) { index, imageItem ->
+        itemsIndexed(items) { index, item ->
             val firstVisibleItem = listState.firstVisibleItemIndex
             val scrollOffset = listState.firstVisibleItemScrollOffset
-            val name = "Sin nombre"
-            val description =  "Sin descripción"
-            val price =  0
 
             val shouldAnimate = index == firstVisibleItem
 
@@ -76,7 +80,7 @@ fun Listing() {
             ) {
                 Column(modifier = Modifier.padding(8.dp)) {
                     Image(
-                        painter = rememberAsyncImagePainter(imageItem.url),
+                        painter = rememberAsyncImagePainter(item.image.url),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
@@ -85,11 +89,32 @@ fun Listing() {
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Message(
-                        title = "Imagen #${imageItem.id}",
-                        subtitle = "$description\nPrecio: \$${price}"
+                        title = item.name,
+                        subtitle = "${item.description}\nPrecio: \$${item.price}"
                     )
                 }
             }
         }
     }
+}
+
+fun productName(index: Int): String {
+    val letters = ('A'..'Z').toList()
+    return "Producto ${letters.getOrNull(index % letters.size) ?: "X"}"
+}
+
+fun Description(): String {
+    val descriptions = listOf(
+        "Este es un excelente producto.",
+        "Calidad garantizada.",
+        "Nuevo en el mercado.",
+        "Edición limitada.",
+        "Ideal para ti.",
+        "Con la mejor tecnología."
+    )
+    return descriptions.random()
+}
+
+fun Price(): Int {
+    return (100..999).random()
 }
