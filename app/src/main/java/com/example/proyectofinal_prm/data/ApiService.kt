@@ -12,7 +12,7 @@ interface ApiService {
     @POST("login")
     fun login(@Body user: LoginRequest): Call<AuthResponse>
 
-    @GET("images")
-    suspend fun getImages(): List<ImageItem>
+    @GET("articles")
+    suspend fun getProducts(): ProductResponse
 }
 
