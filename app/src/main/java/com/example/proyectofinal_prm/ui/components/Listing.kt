@@ -3,6 +3,7 @@ package com.example.proyectofinal_prm.ui.components
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
@@ -113,7 +115,16 @@ fun CarouselImage(images: List<com.example.proyectofinal_prm.data.ImageItem>) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(180.dp),
+            .height(180.dp)
+            .pointerInput(images) {
+                detectHorizontalDragGestures { _, dragAmount ->
+                    if (dragAmount < -50) {
+                        currentIndex = (currentIndex + 1).coerceAtMost(images.lastIndex)
+                    } else if (dragAmount > 50) {
+                        currentIndex = (currentIndex - 1).coerceAtLeast(0)
+                    }
+                }
+            },
         contentAlignment = Alignment.Center
     ) {
         if (images.isNotEmpty()) {
@@ -123,40 +134,6 @@ fun CarouselImage(images: List<com.example.proyectofinal_prm.data.ImageItem>) {
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
-
-            IconButton(
-                onClick = {
-                    currentIndex = if (currentIndex > 0) currentIndex - 1 else images.lastIndex
-                },
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = 8.dp)
-                    .size(32.dp)
-                    .background(Color(0x66000000), shape = MaterialTheme.shapes.small)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.ArrowBack,
-                    contentDescription = "Anterior",
-                    tint = Color.White
-                )
-            }
-
-            IconButton(
-                onClick = {
-                    currentIndex = if (currentIndex < images.lastIndex) currentIndex + 1 else 0
-                },
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 8.dp)
-                    .size(32.dp)
-                    .background(Color(0x66000000), shape = MaterialTheme.shapes.small)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.ArrowForward,
-                    contentDescription = "Siguiente",
-                    tint = Color.White
-                )
-            }
 
             Row(
                 modifier = Modifier
