@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.example.proyectofinal_prm.data.ProductItem
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -20,9 +21,11 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.Part
+import retrofit2.http.Path
 import java.io.File
 
 @Composable
@@ -126,4 +129,18 @@ interface ApiMultipartService {
         @Part("price") price: okhttp3.RequestBody,
         @Part images: List<MultipartBody.Part>
     ): retrofit2.Response<Unit>
+
+    @Multipart
+    @POST("products/{id}?_method=PUT")
+    suspend fun updateProduct(
+        @retrofit2.http.Path("id") id: Int,
+        @Part("name") name: okhttp3.RequestBody,
+        @Part("description") description: okhttp3.RequestBody,
+        @Part("price") price: okhttp3.RequestBody,
+        @Part images: List<MultipartBody.Part>
+    ): retrofit2.Response<Unit>
+
+    @GET("products/{id}")
+    suspend fun getProduct(@Path("id") id: Int): ProductItem
+
 }

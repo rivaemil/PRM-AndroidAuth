@@ -1,5 +1,8 @@
 package com.example.proyectofinal_prm.data
 
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okhttp3.Response
 import retrofit2.Call
 import retrofit2.http.Body
 import retrofit2.http.POST
@@ -16,15 +19,10 @@ interface ApiService {
     @GET("articles")
     suspend fun getProducts(): ProductResponse
 
-    @POST("products")
-    suspend fun createProduct(@Body product: ProductCreateRequest): ProductItem
+    @GET("products/{id}")
+    suspend fun getProduct(@Path("id") id: Int): ProductItem
 
     @PUT("products/{id}")
-    suspend fun updateProduct(
-        @Path("id") id: Int,
-        @Body product: ProductUpdateRequest
-    ): ProductItem
+    suspend fun updateProduct(@Path("id") id: Int, @Body product: ProductRequest): ProductItem
 
-    @DELETE("products/{id}")
-    suspend fun deleteProduct(@Path("id") id: Int): Unit
 }

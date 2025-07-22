@@ -15,14 +15,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.*
+import androidx.navigation.navArgument
 import com.example.proyectofinal_prm.data.ApiClient
 import com.example.proyectofinal_prm.data.ProductItem
-import com.example.proyectofinal_prm.ui.pages.CreateProductScreen
-import com.example.proyectofinal_prm.ui.pages.HomePage
-import com.example.proyectofinal_prm.ui.pages.NotificationPage
-import com.example.proyectofinal_prm.ui.pages.ProfilePage
-import com.example.proyectofinal_prm.ui.pages.SettingsPage
+import com.example.proyectofinal_prm.ui.pages.*
 import kotlinx.coroutines.launch
 
 @Composable
@@ -122,7 +121,11 @@ fun MainScreen(modifier: Modifier = Modifier) {
                         modifier = Modifier.padding(innerPadding),
                         selectedIndex = selectedIndex,
                         products = products,
-                        refreshProducts = { fetchProducts() }
+                        refreshProducts = { fetchProducts() },
+                        onEditProduct = { productId ->
+                            navController.navigate("edit_product/$productId")
+                        },
+                        navController = navController
                     )
                 }
             }
@@ -136,6 +139,14 @@ fun MainScreen(modifier: Modifier = Modifier) {
                 }
             )
         }
+
+        composable(
+            "edit_product/{productId}",
+            arguments = listOf(navArgument("productId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val productId = backStackEntry.arguments?.getInt("productId") ?: return@composable
+            EditProductScreen(productId = productId, navController = navController)
+        }
     }
 }
 
@@ -144,10 +155,18 @@ fun ContentScreen(
     modifier: Modifier = Modifier,
     selectedIndex: Int,
     products: List<ProductItem>,
-    refreshProducts: () -> Unit
+    refreshProducts: () -> Unit,
+    onEditProduct: (Int) -> Unit,
+    navController: NavHostController
 ) {
     when (selectedIndex) {
-        0 -> HomePage(products = products, refreshProducts = refreshProducts)
+        0 -> HomePage(
+            modifier = modifier,
+            products = products,
+            refreshProducts = refreshProducts,
+            onEditProduct = onEditProduct,
+            navController = navController
+        )
         1 -> NotificationPage()
         2 -> SettingsPage()
         3 -> ProfilePage()

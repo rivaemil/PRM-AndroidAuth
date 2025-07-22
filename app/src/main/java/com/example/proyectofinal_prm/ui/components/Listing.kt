@@ -4,34 +4,15 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,6 +20,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.proyectofinal_prm.data.ApiClient
 import com.example.proyectofinal_prm.data.ProductItem
@@ -47,7 +29,7 @@ import kotlinx.coroutines.withContext
 import kotlin.math.max
 
 @Composable
-fun Listing() {
+fun Listing(navController: NavController) {
     var items by remember { mutableStateOf<List<ProductItem>>(emptyList()) }
 
     LaunchedEffect(Unit) {
@@ -55,7 +37,6 @@ fun Listing() {
             val response = withContext(Dispatchers.IO) {
                 ApiClient.apiService.getProducts()
             }
-            // response.data contiene la lista real
             items = response.data
         } catch (e: Exception) {
             e.printStackTrace()
@@ -84,6 +65,10 @@ fun Listing() {
                 label = "alphaAnimation"
             )
 
+
+            var offsetX by remember { mutableStateOf(0f) }
+            var hasNavigated by remember { mutableStateOf(false) }
+
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 modifier = Modifier
@@ -92,6 +77,33 @@ fun Listing() {
                         scaleX = scale
                         scaleY = scale
                         this.alpha = alpha
+                        translationX = offsetX
+                    }
+                    .pointerInput(product.id) {
+                        detectHorizontalDragGestures(
+                            onDragEnd = {
+                                if (offsetX > 150 && !hasNavigated) {
+                                    hasNavigated = true
+                                    navController.navigate("edit_product/${product.id}")
+                                }
+                                if (!hasNavigated) {
+                                    offsetX = 0f
+                                }
+                            },
+                            onDragCancel = {
+
+                                if (!hasNavigated) {
+                                    offsetX = 0f
+                                }
+                            },
+                            onHorizontalDrag = { change, dragAmount ->
+                                val newOffset = offsetX + dragAmount
+                                // Solo permitir arrastrar a la derecha (offsetX >= 0)
+                                if (newOffset >= 0f) {
+                                    offsetX = newOffset
+                                }
+                            }
+                        )
                     },
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
             ) {
@@ -107,6 +119,7 @@ fun Listing() {
         }
     }
 }
+
 
 @Composable
 fun CarouselImage(images: List<com.example.proyectofinal_prm.data.ImageItem>) {
@@ -128,8 +141,15 @@ fun CarouselImage(images: List<com.example.proyectofinal_prm.data.ImageItem>) {
         contentAlignment = Alignment.Center
     ) {
         if (images.isNotEmpty()) {
+            val rawUrl = images[currentIndex].url
+            val imageUrl = if (rawUrl.startsWith("http")) {
+                rawUrl
+            } else {
+                "http://10.0.2.2:8000${rawUrl}"
+            }
+
             Image(
-                painter = rememberAsyncImagePainter(images[currentIndex].url),
+                painter = rememberAsyncImagePainter(model = imageUrl),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
