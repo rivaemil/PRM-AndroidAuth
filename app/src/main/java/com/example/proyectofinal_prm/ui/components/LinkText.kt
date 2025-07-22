@@ -1,6 +1,5 @@
 package com.example.proyectofinal_prm.ui.components
 
-
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
