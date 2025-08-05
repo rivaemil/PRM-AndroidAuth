@@ -1,141 +1,191 @@
 package com.example.proyectofinal_prm.ui.pages
 
-import android.content.Context
 import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import android.widget.Toast
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Create
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import coil.compose.AsyncImage
-import com.example.proyectofinal_prm.data.ApiClient
-import com.example.proyectofinal_prm.data.ProductItem
-import com.example.proyectofinal_prm.data.ProductRequest
-import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.RequestBody.Companion.asRequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
-import java.io.File
+import coil.compose.rememberAsyncImagePainter
+import com.example.proyectofinal_prm.viewmodel.ProductViewModel
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 
 @Composable
-fun EditProductScreen(productId: Int, navController: NavController) {
+fun EditProductScreen(
+    productId: Int,
+    navController: NavController,
+    viewModel: ProductViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
-    var product by remember { mutableStateOf<ProductItem?>(null) }
-    var name by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var price by remember { mutableStateOf("") }
-    val imageUris = remember { mutableStateListOf<Uri>() }
+    val product = viewModel.productState.collectAsState().value
 
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetMultipleContents()
-    ) { uris ->
-        imageUris.clear()
-        imageUris.addAll(uris.take(4))
+    var name by remember { mutableStateOf(TextFieldValue(product?.name ?: "")) }
+    var description by remember { mutableStateOf(TextFieldValue(product?.description ?: "")) }
+    var price by remember { mutableStateOf(TextFieldValue(product?.price?.toString() ?: "")) }
+
+    val newImageUris = remember { mutableStateListOf<Uri>() }
+    val existingImageUrls = remember {
+        mutableStateListOf<String>().apply {
+            product?.images?.mapNotNull { it.url }?.let { addAll(it) }
+        }
     }
+    val deletedImageUrls = remember { mutableStateListOf<String>() }
 
-    LaunchedEffect(productId) {
-        try {
-            val fetchedProduct = ApiClient.apiService.getProduct(productId)
-            product = fetchedProduct
-            name = fetchedProduct.name
-            description = fetchedProduct.description
-            price = fetchedProduct.price.toString()
-        } catch (e: Exception) {
-            e.printStackTrace()
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null && (existingImageUrls.size + newImageUris.size) < 4) {
+            newImageUris.add(uri)
         }
     }
 
-    if (product != null) {
-        Column(Modifier.padding(16.dp)) {
-            OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nombre") })
-            OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Descripción") })
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(onClick = {
+                val nameStr = name.text.trim()
+                val descStr = description.text.trim()
+                val priceVal = price.text.toDoubleOrNull() ?: 0.0
+
+                if (nameStr.isBlank() || descStr.isBlank() || priceVal <= 0.0) {
+                    Toast.makeText(context, "Campos inválidos", Toast.LENGTH_SHORT).show()
+                    return@FloatingActionButton
+                }
+
+                val productId = product?.id ?: return@FloatingActionButton
+
+                viewModel.updateProduct(
+                    context = context,
+                    id = productId,
+                    name = nameStr,
+                    description = descStr,
+                    price = priceVal,
+                    deletedImageUrls = deletedImageUrls,
+                    newImageUris = newImageUris,
+                    onSuccess = {
+                        Toast.makeText(context, "Producto actualizado", Toast.LENGTH_SHORT).show()
+                        navController.popBackStack()
+                    },
+                    onError = { msg ->
+                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                    }
+                )
+            }) {
+                Icon(imageVector = Icons.Default.Create, contentDescription = "Actualizar")
+            }
+        }
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(it)
+                .padding(16.dp)
+                .fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Nombre") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = description,
+                onValueChange = { description = it },
+                label = { Text("Descripción") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
             OutlinedTextField(
                 value = price,
                 onValueChange = { price = it },
                 label = { Text("Precio") },
-                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number)
+                modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(Modifier.height(8.dp))
-
-            Button(onClick = { launcher.launch("image/*") }) {
-                Text("Cambiar Imágenes (${imageUris.size}/4)")
-            }
-
+            Text("Imágenes existentes:", style = MaterialTheme.typography.titleSmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (imageUris.isEmpty()) {
-                    product?.images?.forEach {
-                        AsyncImage(model = it.url, contentDescription = null, modifier = Modifier.size(80.dp))
-                    }
-                } else {
-                    imageUris.forEach { uri ->
-                        AsyncImage(model = uri, contentDescription = null, modifier = Modifier.size(80.dp))
+                existingImageUrls.forEach { url ->
+                    Box {
+                        Image(
+                            painter = rememberAsyncImagePainter(url),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(80.dp)
+                                .background(Color.LightGray)
+                                .pointerInput(Unit) {
+                                    detectTapGestures(
+                                        onLongPress = {
+                                            existingImageUrls.remove(url)
+                                            deletedImageUrls.add(url)
+                                        }
+                                    )
+                                },
+                            contentScale = ContentScale.Crop
+                        )
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Eliminar",
+                            tint = Color.Red,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .clickable {
+                                    existingImageUrls.remove(url)
+                                    deletedImageUrls.add(url)
+                                }
+                        )
                     }
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            Button(
-                onClick = {
-                    scope.launch {
-                        updateProduct(
-                            productId, name, description, price, imageUris, context
-                        )
-                        navController.popBackStack()
+            Text("Imágenes nuevas:", style = MaterialTheme.typography.titleSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                newImageUris.forEach { uri ->
+                    Image(
+                        painter = rememberAsyncImagePainter(uri),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(80.dp)
+                            .background(Color.Gray),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+                if ((existingImageUrls.size + newImageUris.size) < 4) {
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .background(Color.Gray, shape = CircleShape)
+                            .clickable { imagePickerLauncher.launch("image/*") },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("+", color = Color.White, style = MaterialTheme.typography.bodyLarge)
                     }
-                },
-                enabled = name.isNotBlank() && price.isNotBlank()
-            ) {
-                Text("Actualizar Producto")
+                }
             }
         }
-    } else {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
     }
-}
-
-suspend fun updateProduct(
-    productId: Int,
-    name: String,
-    description: String,
-    price: String,
-    imageUris: List<Uri>,
-    context: Context
-) {
-    val contentResolver = context.contentResolver
-
-    val namePart = name.toRequestBody("text/plain".toMediaTypeOrNull())
-    val descriptionPart = description.toRequestBody("text/plain".toMediaTypeOrNull())
-    val pricePart = price.toRequestBody("text/plain".toMediaTypeOrNull())
-
-    val images = imageUris.mapIndexed { index, uri ->
-        val inputStream = contentResolver.openInputStream(uri)!!
-        val file = File.createTempFile("upload", ".jpg")
-        file.outputStream().use { inputStream.copyTo(it) }
-        val requestBody = file.asRequestBody("image/*".toMediaTypeOrNull())
-        MultipartBody.Part.createFormData("images[$index]", file.name, requestBody)
-    }
-
-    val retrofit = Retrofit.Builder()
-        .baseUrl("http://10.0.2.2:8000/api/")
-        .addConverterFactory(GsonConverterFactory.create())
-        .build()
-
-    val service = retrofit.create(ApiMultipartService::class.java)
-    service.updateProduct(productId, namePart, descriptionPart, pricePart, images)
 }
