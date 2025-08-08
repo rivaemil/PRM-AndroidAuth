@@ -25,4 +25,7 @@ interface ApiService {
     @PUT("products/{id}")
     suspend fun updateProduct(@Path("id") id: Int, @Body product: ProductRequest): ProductItem
 
+    @DELETE("products/{id}")
+    suspend fun deleteProduct(@Path("id") id: Int): retrofit2.Response<Unit>
+
 }
