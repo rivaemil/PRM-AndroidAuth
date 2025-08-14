@@ -3,25 +3,13 @@ package com.example.proyectofinal_prm.ui.pages.login
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.widget.Toast
 import androidx.activity.compose.LocalActivity
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,18 +18,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import androidx.navigation.NavController
-import com.example.proyectofinal_prm.ui.components.InputField
-import com.example.proyectofinal_prm.ui.components.Message
-import com.example.proyectofinal_prm.ui.components.PrimaryButton
-import com.example.proyectofinal_prm.ui.components.SecondaryButton
-import com.example.proyectofinal_prm.ui.components.linkText
+import com.example.proyectofinal_prm.ui.components.*
 import java.util.concurrent.Executors
-import android.widget.Toast
 import com.example.proyectofinal_prm.data.*
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-
 
 @Composable
 fun LoginPage(
@@ -49,12 +31,13 @@ fun LoginPage(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val activity = LocalActivity.current as FragmentActivity // Necesario para BiometricPrompt
+    val activity = LocalActivity.current as FragmentActivity
+    val tokenStore = remember { TokenStore(context) }
+
     var showBiometricError by remember { mutableStateOf(false) }
     var biometricErrorText by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-
 
     fun verifyBiometricAuth(
         activityContext: Context,
@@ -73,11 +56,9 @@ fun LoginPage(
                         override fun onAuthenticationError(code: Int, errMsg: CharSequence) {
                             authFailed("Error de autenticación: $errMsg")
                         }
-
                         override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                             authSuccess()
                         }
-
                         override fun onAuthenticationFailed() {
                             authFailed("La huella no coincide con nuestros registros")
                         }
@@ -141,12 +122,9 @@ fun LoginPage(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Spacer(modifier = Modifier.width(1.dp))
             }
-
             linkText(
                 text = "Olvidaste tu contraseña?",
                 onClick = { navController.navigate("verify") }
@@ -157,18 +135,26 @@ fun LoginPage(
 
         PrimaryButton(
             onClick = {
-                val user = LoginRequest(email, password)
-
+                // 1) Llamada de login: guarda el token en Session + TokenStore
+                val user = LoginRequest(email.trim(), password)
                 ApiClient.apiService.login(user).enqueue(object : Callback<AuthResponse> {
                     override fun onResponse(call: Call<AuthResponse>, response: Response<AuthResponse>) {
                         if (response.isSuccessful) {
-                            Toast.makeText(context, "Login exitoso", Toast.LENGTH_SHORT).show()
-                            navController.navigate("home")
+                            val token = response.body()?.access_token
+                            if (!token.isNullOrBlank()) {
+                                // Memoria
+                                Session.setToken(token)
+                                // Persistencia
+                                tokenStore.save(token)
+                                Toast.makeText(context, "Login exitoso", Toast.LENGTH_SHORT).show()
+                                navController.navigate("home")
+                            } else {
+                                Toast.makeText(context, "Respuesta inválida: no hay token", Toast.LENGTH_LONG).show()
+                            }
                         } else {
                             Toast.makeText(context, "Credenciales inválidas", Toast.LENGTH_LONG).show()
                         }
                     }
-
                     override fun onFailure(call: Call<AuthResponse>, t: Throwable) {
                         Toast.makeText(context, "Fallo de red: ${t.message}", Toast.LENGTH_LONG).show()
                     }
@@ -190,12 +176,26 @@ fun LoginPage(
                 verifyBiometricAuth(
                     activityContext = activity,
                     authSuccess = {
-                        Handler(Looper.getMainLooper()).post {
-                            navController.navigate("home")
+                        // 2) Biometría: usa token guardado previamente
+                        val stored = tokenStore.load()
+                        if (!stored.isNullOrBlank()) {
+                            Session.setToken(stored)
+                            Handler(Looper.getMainLooper()).post {
+                                navController.navigate("home")
+                            }
+                        } else {
+                            Handler(Looper.getMainLooper()).post {
+                                Toast.makeText(
+                                    context,
+                                    "No hay sesión guardada. Inicia con email una vez.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
                         }
                     },
                     authFailed = {
                         showBiometricError = true
+                        biometricErrorText = it
                     }
                 )
             },
@@ -208,8 +208,7 @@ fun LoginPage(
             cornerRadius = 20.dp,
         )
 
-
-            if (showBiometricError) {
+        if (showBiometricError) {
             Text(
                 text = biometricErrorText,
                 color = Color.Red,
@@ -219,9 +218,7 @@ fun LoginPage(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(text = "Aun no tienes una cuenta?")
             linkText(
                 text = "Registrate",
